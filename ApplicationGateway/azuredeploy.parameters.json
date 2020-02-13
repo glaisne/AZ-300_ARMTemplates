@@ -1,0 +1,42 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "adminUsername": {
+      "value": "Gene"
+    },
+    "adminPassword": {
+      "value": "Password!101"
+    },
+    "location": {
+        "value": "East US"
+    },
+    "VMSize": {
+      "value": "Standard_A2"
+    },
+    "VM1Name": {
+      "value": "BackEndVM01"
+    },
+    "VM2Name": {
+        "value": "BackEndVM02"
+    },
+    "dnsLabel1Prefix": {
+      "value": "gene"
+    },
+    "dnsLabel2Prefix": {
+      "value": "gene"
+    },
+    "KeyVaultName": {
+        "value": null
+    },
+    "CertificateUrl": {
+        "value": null
+    },
+    "NSGSourceIP": {
+      "value": null
+    },
+    "webdeploypkg": {
+      "value": "https://github.com/glaisne/azure-quickstart-templates/raw/master/201-web-app-vm-dsc/WebApplication3.zip"
+    },
+  }
+}

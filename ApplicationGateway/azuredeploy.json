@@ -1,0 +1,507 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "adminUsername": {
+      "type": "string",
+      "metadata": {
+        "description": "Username for the Virtual Machine's administrator."
+      }
+    },
+    "adminPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Password for the Virtual Machine's administrator."
+      }
+    },
+    "VM1Name": {
+      "type": "string",
+      "defaultValue": "WinServer-VM1",
+      "metadata": {
+        "description": "Name for the VM"
+      }
+    },
+    "VM2Name": {
+      "type": "string",
+      "defaultValue": "WinServer-VM2",
+      "metadata": {
+        "description": "Name for the VM"
+      }
+    },
+    "VMSize": {
+      "type": "string",
+      "defaultValue": "Standard_A2",
+      "allowedValues": [
+        "Standard_A2"
+      ],
+      "metadata": {
+        "description": "Size of the VM"
+      }
+    },
+    "dnsLabel1Prefix": {
+      "type": "string",
+      "metadata": {
+        "description": "Unique DNS Name for the Public IP used to access the Virtual Machine."
+      }
+    },
+    "dnsLabel2Prefix": {
+      "type": "string",
+      "metadata": {
+        "description": "Unique DNS Name for the Public IP used to access the Virtual Machine."
+      }
+    },
+    "windowsOSVersion": {
+      "type": "string",
+      "defaultValue": "2019-Datacenter",
+      "allowedValues": [
+        "2016-Datacenter",
+        "2016-Datacenter-Server-Core",
+        "2016-Datacenter-with-Containers",
+        "2012-R2-Datacenter",
+        "2008-R2-SP1",
+        "2012-Datacenter",
+        "2019-Datacenter",
+        "2019-Datacenter-Core",
+        "2019-Datacenter-Core-with-Containers"
+      ],
+      "metadata": {
+        "description": "The Windows version for the VM. This will pick a fully patched image of this given Windows version."
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Location for all resources."
+      }
+    },
+    "KeyVaultName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the Key Vault."
+      }
+    },
+    "CertificateUrl": {
+      "type": "string",
+      "metadata": {
+        "description": "Certificate URL within the Key Vault"
+      }
+    },
+    "NSGSourceIP": {
+      "type": "string",
+      "metadata": {
+        "description": "Source IP for network traffic from outside the VNet"
+      }
+    }
+  },
+  "variables": {
+    "nic1Name": "[concat(parameters('VM1Name'), '-nic')]",
+    "nic2Name": "[concat(parameters('VM2Name'), '-nic')]",
+    "VM1OsDiskName": "VM1OSDisk",
+    "VM2OsDiskName": "VM2OSDisk",
+    "address1Prefix": "10.0.0.0/16",
+    "subnetName": "Subnet1",
+    "subnetPrefix": "10.0.0.0/24",
+    "publicIPAddress1Name": "[concat(parameters('VM1Name'), '-pip')]",
+    "publicIPAddress2Name": "[concat(parameters('VM2Name'), '-pip')]",
+    "virtualNetworkName": "VNET1",
+    "NetworkSecurityGroupName": "[concat(variables('virtualNetworkName'), '-nsg')]",
+    "subnet1Ref": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('virtualNetworkName'), variables('subnetName'))]",
+    "schedules_shutdown_computevm1_name": "[concat('shutdown-computevm-', parameters('vm1Name'))]",
+    "schedules_shutdown_computevm2_name": "[concat('shutdown-computevm-', parameters('vm2Name'))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Network/publicIPAddresses",
+      "name": "[variables('publicIPAddress1Name')]",
+      "apiVersion": "2018-11-01",
+      "location": "[parameters('location')]",
+      "properties": {
+        "publicIPAllocationMethod": "Dynamic",
+        "dnsSettings": {
+          "domainNameLabel": "[parameters('dnsLabel1Prefix')]"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Network/publicIPAddresses",
+      "name": "[variables('publicIPAddress2Name')]",
+      "apiVersion": "2018-11-01",
+      "location": "[parameters('location')]",
+      "properties": {
+        "publicIPAllocationMethod": "Dynamic",
+        "dnsSettings": {
+          "domainNameLabel": "[parameters('dnsLabel2Prefix')]"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Network/virtualNetworks",
+      "name": "[variables('virtualNetworkName')]",
+      "apiVersion": "2018-11-01",
+      "location": "[parameters('location')]",
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "[variables('address1Prefix')]"
+          ]
+        },
+        "subnets": [
+          {
+            "name": "[variables('subnetName')]",
+            "properties": {
+              "addressPrefix": "[variables('subnetPrefix')]",
+              "networkSecurityGroup": {
+                "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('NetworkSecurityGroupName'))]"
+              }
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/networkSecurityGroups', variables('NetworkSecurityGroupName'))]"
+      ]
+    },
+    {
+      "apiVersion": "2017-10-01",
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "name": "[concat(variables('virtualNetworkName'),'-nsg')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "securityRules": [
+          {
+            "name": "Allow-RDP",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "3389",
+              "sourceAddressPrefix": "[parameters('NSGSourceIP')]",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 100,
+              "direction": "Inbound",
+              "sourcePortRanges": [
+              ],
+              "destinationPortRanges": [
+              ],
+              "sourceAddressPrefixes": [
+              ],
+              "destinationAddressPrefixes": [
+              ]
+            }
+          },
+          {
+            "name": "Allow-WinRM",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "5986",
+              "sourceAddressPrefix": "[parameters('NSGSourceIP')]",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 110,
+              "direction": "Inbound",
+              "sourcePortRanges": [
+              ],
+              "destinationPortRanges": [
+              ],
+              "sourceAddressPrefixes": [
+              ],
+              "destinationAddressPrefixes": [
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "[variables('nic1Name')]",
+      "apiVersion": "2018-11-01",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/publicIPAddresses/', variables('publicIPAddress1Name'))]",
+        "[resourceId('Microsoft.Network/virtualNetworks/', variables('virtualNetworkName'))]"
+      ],
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "publicIPAddress": {
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses',variables('publicIPAddress1Name'))]"
+              },
+              "subnet": {
+                "id": "[variables('subnet1Ref')]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "[variables('nic2Name')]",
+      "apiVersion": "2018-11-01",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/publicIPAddresses/', variables('publicIPAddress2Name'))]",
+        "[resourceId('Microsoft.Network/virtualNetworks/', variables('virtualNetworkName'))]"
+      ],
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "publicIPAddress": {
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses',variables('publicIPAddress2Name'))]"
+              },
+              "subnet": {
+                "id": "[variables('subnet1Ref')]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": "[parameters('vm1Name')]",
+      "apiVersion": "2019-03-01",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/networkInterfaces/', variables('nic1Name'))]"
+      ],
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[parameters('VMSize')]"
+        },
+        "osProfile": {
+          "computerName": "[parameters('vm1Name')]",
+          "adminUsername": "[parameters('adminUsername')]",
+          "adminPassword": "[parameters('adminPassword')]",
+          "secrets": [
+            {
+              "sourceVault": {
+                "id": "[resourceId('Microsoft.KeyVault/vaults', parameters('KeyVaultName'))]"
+              },
+              "vaultCertificates": [
+                {
+                  "certificateUrl": "[parameters('CertificateUrl')]",
+                  "certificateStore": "My"
+                }
+              ]
+            }
+          ],
+          "windowsConfiguration": {
+            "provisionVMAgent": true,
+            "enableAutomaticUpdates": false,
+            "winRM": {
+              "listeners": [
+                {
+                  "protocol": "Http"
+                },
+                {
+                  "protocol": "Https",
+                  "certificateUrl": "[parameters('CertificateUrl')]"
+                }
+              ]
+            }
+          },
+          "allowExtensionOperations": true
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "MicrosoftWindowsServer",
+            "offer": "WindowsServer",
+            "sku": "[parameters('windowsOSVersion')]",
+            "version": "latest"
+          },
+          "osDisk": {
+            "osType": "Windows",
+            "name": "[variables('VM1OsDiskName')]",
+            "createOption": "FromImage",
+            "caching": "ReadWrite",
+            "diskSizeGB": 127
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces',variables('nic1Name'))]"
+            }
+          ]
+        }
+      },
+      "resources": [
+        {
+          "name": "DSCExt1",
+          "type": "extensions",
+          "location": "[resourceGroup().location]",
+          "apiVersion": "2015-05-01-preview",
+          "dependsOn": [
+            "[concat('Microsoft.Compute/virtualMachines/', parameters('vm1Name'))]"
+          ],
+          "tags": {
+            "displayName": "DSCExt1"
+          },
+          "properties": {
+            "publisher": "Microsoft.Powershell",
+            "type": "DSC",
+            "typeHandlerVersion": "2.19",
+            "autoUpgradeMinorVersion": true,
+            "settings": {
+              "modulesUrl": "[parameters('modulesUrl')]",
+              "configurationFunction": "ConfigureWebServer.ps1\\Main",
+              "properties": {
+                "MachineName": "[parameters('vm1Name')]",
+                "WebDeployPackagePath": "[parameters('webdeploypkg')]",
+                "UserName": "[parameters('adminUsername')]",
+                "Password": "[parameters('adminPassword')]",
+                "DbServerName": "[parameters('DatabaseServerName')]",
+                "DbName": "[parameters('databaseName')]",
+                "DbUserName": "[parameters('databaseServerAdminLogin')]",
+                "DbPassword": "[parameters('databaseServerAdminLoginPassword')]"
+              }
+            },
+            "protectedSettings": {}
+          }
+        }
+      ]
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": "[parameters('vm2Name')]",
+      "apiVersion": "2019-03-01",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/networkInterfaces/', variables('nic2Name'))]"
+      ],
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[parameters('VMSize')]"
+        },
+        "osProfile": {
+          "computerName": "[parameters('vm2Name')]",
+          "adminUsername": "[parameters('adminUsername')]",
+          "adminPassword": "[parameters('adminPassword')]",
+          "secrets": [
+            {
+              "sourceVault": {
+                "id": "[resourceId('Microsoft.KeyVault/vaults', parameters('KeyVaultName'))]"
+              },
+              "vaultCertificates": [
+                {
+                  "certificateUrl": "[parameters('CertificateUrl')]",
+                  "certificateStore": "My"
+                }
+              ]
+            }
+          ],
+          "windowsConfiguration": {
+            "provisionVMAgent": true,
+            "enableAutomaticUpdates": false,
+            "winRM": {
+              "listeners": [
+                {
+                  "protocol": "Http"
+                },
+                {
+                  "protocol": "Https",
+                  "certificateUrl": "[parameters('CertificateUrl')]"
+                }
+              ]
+            }
+          },
+          "allowExtensionOperations": true
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "MicrosoftWindowsServer",
+            "offer": "WindowsServer",
+            "sku": "[parameters('windowsOSVersion')]",
+            "version": "latest"
+          },
+          "osDisk": {
+            "osType": "Windows",
+            "name": "[variables('VM2OsDiskName')]",
+            "createOption": "FromImage",
+            "caching": "ReadWrite",
+            "diskSizeGB": 127
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces',variables('nic2Name'))]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "microsoft.devtestlab/schedules",
+      "name": "[variables('schedules_shutdown_computevm1_name')]",
+      "apiVersion": "2018-09-15",
+      "location": "[parameters('location')]",
+      "scale": null,
+      "properties": {
+        "status": "Enabled",
+        "taskType": "ComputeVmShutdownTask",
+        "dailyRecurrence": {
+          "time": "1700"
+        },
+        "timeZoneId": "Eastern Standard Time",
+        "notificationSettings": {
+          "status": "Disabled",
+          "timeInMinutes": 30
+        },
+        "targetResourceId": "[resourceId('Microsoft.Compute/virtualMachines', parameters('vm1Name'))]",
+        "provisioningState": "Succeeded",
+        "uniqueIdentifier": "5b9eed52-b7be-4938-967b-bf98736507e8"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Compute/virtualMachines', parameters('vm1Name'))]"
+      ]
+    },
+    {
+      "type": "microsoft.devtestlab/schedules",
+      "name": "[variables('schedules_shutdown_computevm2_name')]",
+      "apiVersion": "2018-09-15",
+      "location": "[parameters('location')]",
+      "scale": null,
+      "properties": {
+        "status": "Enabled",
+        "taskType": "ComputeVmShutdownTask",
+        "dailyRecurrence": {
+          "time": "1700"
+        },
+        "timeZoneId": "Eastern Standard Time",
+        "notificationSettings": {
+          "status": "Disabled",
+          "timeInMinutes": 30
+        },
+        "targetResourceId": "[resourceId('Microsoft.Compute/virtualMachines', parameters('vm2Name'))]",
+        "provisioningState": "Succeeded",
+        "uniqueIdentifier": "5b9eed52-b7be-4938-967b-bf98736507e8"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Compute/virtualMachines', parameters('vm1Name'))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "hostname1": {
+      "type": "string",
+      "value": "[reference(variables('publicIPAddress1Name')).dnsSettings.fqdn]"
+    },
+    "hostname2": {
+      "type": "string",
+      "value": "[reference(variables('publicIPAddress2Name')).dnsSettings.fqdn]"
+    }
+  }
+}
