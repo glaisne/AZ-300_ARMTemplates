@@ -38,13 +38,7 @@
         "description": "Size of the VM"
       }
     },
-    "dnsLabel1Prefix": {
-      "type": "string",
-      "metadata": {
-        "description": "Unique DNS Name for the Public IP used to access the Virtual Machine."
-      }
-    },
-    "dnsLabel2Prefix": {
+    "dnsLabelPrefix": {
       "type": "string",
       "metadata": {
         "description": "Unique DNS Name for the Public IP used to access the Virtual Machine."
@@ -68,23 +62,20 @@
         "description": "The Windows version for the VM. This will pick a fully patched image of this given Windows version."
       }
     },
+    "modulesUrl": {
+      "type": "string"
+    },
+    "webdeploypkg01": {
+      "type": "string"
+    },
+    "webdeploypkg02": {
+      "type": "string"
+    },
     "location": {
       "type": "string",
       "defaultValue": "[resourceGroup().location]",
       "metadata": {
         "description": "Location for all resources."
-      }
-    },
-    "KeyVaultName": {
-      "type": "string",
-      "metadata": {
-        "description": "Name of the Key Vault."
-      }
-    },
-    "CertificateUrl": {
-      "type": "string",
-      "metadata": {
-        "description": "Certificate URL within the Key Vault"
       }
     },
     "NSGSourceIP": {
@@ -102,8 +93,7 @@
     "address1Prefix": "10.0.0.0/16",
     "subnetName": "Subnet1",
     "subnetPrefix": "10.0.0.0/24",
-    "publicIPAddress1Name": "[concat(parameters('VM1Name'), '-pip')]",
-    "publicIPAddress2Name": "[concat(parameters('VM2Name'), '-pip')]",
+    "publicIPAddressName": "AppGateway-pip",
     "virtualNetworkName": "VNET1",
     "NetworkSecurityGroupName": "[concat(variables('virtualNetworkName'), '-nsg')]",
     "subnet1Ref": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('virtualNetworkName'), variables('subnetName'))]",
@@ -113,25 +103,13 @@
   "resources": [
     {
       "type": "Microsoft.Network/publicIPAddresses",
-      "name": "[variables('publicIPAddress1Name')]",
+      "name": "[variables('publicIPAddressName')]",
       "apiVersion": "2018-11-01",
       "location": "[parameters('location')]",
       "properties": {
         "publicIPAllocationMethod": "Dynamic",
         "dnsSettings": {
-          "domainNameLabel": "[parameters('dnsLabel1Prefix')]"
-        }
-      }
-    },
-    {
-      "type": "Microsoft.Network/publicIPAddresses",
-      "name": "[variables('publicIPAddress2Name')]",
-      "apiVersion": "2018-11-01",
-      "location": "[parameters('location')]",
-      "properties": {
-        "publicIPAllocationMethod": "Dynamic",
-        "dnsSettings": {
-          "domainNameLabel": "[parameters('dnsLabel2Prefix')]"
+          "domainNameLabel": "[parameters('dnsLabelPrefix')]"
         }
       }
     },
@@ -212,6 +190,28 @@
               "destinationAddressPrefixes": [
               ]
             }
+          },
+          {
+            "name": "Allow-http",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "80",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 120,
+              "direction": "Inbound",
+              "sourcePortRanges": [
+              ],
+              "destinationPortRanges": [
+              ],
+              "sourceAddressPrefixes": [
+              ],
+              "destinationAddressPrefixes": [
+              ]
+            }
           }
         ]
       }
@@ -222,7 +222,6 @@
       "apiVersion": "2018-11-01",
       "location": "[parameters('location')]",
       "dependsOn": [
-        "[resourceId('Microsoft.Network/publicIPAddresses/', variables('publicIPAddress1Name'))]",
         "[resourceId('Microsoft.Network/virtualNetworks/', variables('virtualNetworkName'))]"
       ],
       "properties": {
@@ -231,9 +230,6 @@
             "name": "ipconfig1",
             "properties": {
               "privateIPAllocationMethod": "Dynamic",
-              "publicIPAddress": {
-                "id": "[resourceId('Microsoft.Network/publicIPAddresses',variables('publicIPAddress1Name'))]"
-              },
               "subnet": {
                 "id": "[variables('subnet1Ref')]"
               }
@@ -248,7 +244,6 @@
       "apiVersion": "2018-11-01",
       "location": "[parameters('location')]",
       "dependsOn": [
-        "[resourceId('Microsoft.Network/publicIPAddresses/', variables('publicIPAddress2Name'))]",
         "[resourceId('Microsoft.Network/virtualNetworks/', variables('virtualNetworkName'))]"
       ],
       "properties": {
@@ -257,9 +252,6 @@
             "name": "ipconfig1",
             "properties": {
               "privateIPAllocationMethod": "Dynamic",
-              "publicIPAddress": {
-                "id": "[resourceId('Microsoft.Network/publicIPAddresses',variables('publicIPAddress2Name'))]"
-              },
               "subnet": {
                 "id": "[variables('subnet1Ref')]"
               }
@@ -284,33 +276,9 @@
           "computerName": "[parameters('vm1Name')]",
           "adminUsername": "[parameters('adminUsername')]",
           "adminPassword": "[parameters('adminPassword')]",
-          "secrets": [
-            {
-              "sourceVault": {
-                "id": "[resourceId('Microsoft.KeyVault/vaults', parameters('KeyVaultName'))]"
-              },
-              "vaultCertificates": [
-                {
-                  "certificateUrl": "[parameters('CertificateUrl')]",
-                  "certificateStore": "My"
-                }
-              ]
-            }
-          ],
           "windowsConfiguration": {
             "provisionVMAgent": true,
-            "enableAutomaticUpdates": false,
-            "winRM": {
-              "listeners": [
-                {
-                  "protocol": "Http"
-                },
-                {
-                  "protocol": "Https",
-                  "certificateUrl": "[parameters('CertificateUrl')]"
-                }
-              ]
-            }
+            "enableAutomaticUpdates": false
           },
           "allowExtensionOperations": true
         },
@@ -339,15 +307,15 @@
       },
       "resources": [
         {
-          "name": "DSCExt1",
+          "name": "DSCExt",
           "type": "extensions",
           "location": "[resourceGroup().location]",
-          "apiVersion": "2015-05-01-preview",
+          "apiVersion": "2019-03-01",
           "dependsOn": [
             "[concat('Microsoft.Compute/virtualMachines/', parameters('vm1Name'))]"
           ],
           "tags": {
-            "displayName": "DSCExt1"
+            "displayName": "DSCExt"
           },
           "properties": {
             "publisher": "Microsoft.Powershell",
@@ -359,13 +327,7 @@
               "configurationFunction": "ConfigureWebServer.ps1\\Main",
               "properties": {
                 "MachineName": "[parameters('vm1Name')]",
-                "WebDeployPackagePath": "[parameters('webdeploypkg')]",
-                "UserName": "[parameters('adminUsername')]",
-                "Password": "[parameters('adminPassword')]",
-                "DbServerName": "[parameters('DatabaseServerName')]",
-                "DbName": "[parameters('databaseName')]",
-                "DbUserName": "[parameters('databaseServerAdminLogin')]",
-                "DbPassword": "[parameters('databaseServerAdminLoginPassword')]"
+                "WebDeployPackagePath": "[parameters('webdeploypkg01')]"
               }
             },
             "protectedSettings": {}
@@ -389,33 +351,9 @@
           "computerName": "[parameters('vm2Name')]",
           "adminUsername": "[parameters('adminUsername')]",
           "adminPassword": "[parameters('adminPassword')]",
-          "secrets": [
-            {
-              "sourceVault": {
-                "id": "[resourceId('Microsoft.KeyVault/vaults', parameters('KeyVaultName'))]"
-              },
-              "vaultCertificates": [
-                {
-                  "certificateUrl": "[parameters('CertificateUrl')]",
-                  "certificateStore": "My"
-                }
-              ]
-            }
-          ],
           "windowsConfiguration": {
             "provisionVMAgent": true,
-            "enableAutomaticUpdates": false,
-            "winRM": {
-              "listeners": [
-                {
-                  "protocol": "Http"
-                },
-                {
-                  "protocol": "Https",
-                  "certificateUrl": "[parameters('CertificateUrl')]"
-                }
-              ]
-            }
+            "enableAutomaticUpdates": false
           },
           "allowExtensionOperations": true
         },
@@ -441,7 +379,36 @@
             }
           ]
         }
-      }
+      },
+      "resources": [
+        {
+          "name": "DSCExt",
+          "type": "extensions",
+          "location": "[resourceGroup().location]",
+          "apiVersion": "2019-03-01",
+          "dependsOn": [
+            "[concat('Microsoft.Compute/virtualMachines/', parameters('vm2Name'))]"
+          ],
+          "tags": {
+            "displayName": "DSCExt"
+          },
+          "properties": {
+            "publisher": "Microsoft.Powershell",
+            "type": "DSC",
+            "typeHandlerVersion": "2.19",
+            "autoUpgradeMinorVersion": true,
+            "settings": {
+              "modulesUrl": "[parameters('modulesUrl')]",
+              "configurationFunction": "ConfigureWebServer.ps1\\Main",
+              "properties": {
+                "MachineName": "[parameters('vm2Name')]",
+                "WebDeployPackagePath": "[parameters('webdeploypkg02')]"
+              }
+            },
+            "protectedSettings": {}
+          }
+        }
+      ]
     },
     {
       "type": "microsoft.devtestlab/schedules",
@@ -497,11 +464,7 @@
   "outputs": {
     "hostname1": {
       "type": "string",
-      "value": "[reference(variables('publicIPAddress1Name')).dnsSettings.fqdn]"
-    },
-    "hostname2": {
-      "type": "string",
-      "value": "[reference(variables('publicIPAddress2Name')).dnsSettings.fqdn]"
+      "value": "[reference(variables('publicIPAddressName')).dnsSettings.fqdn]"
     }
   }
 }

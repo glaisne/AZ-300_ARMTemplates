@@ -21,22 +21,19 @@
         "value": "BackEndVM02"
     },
     "dnsLabel1Prefix": {
-      "value": "gene"
+      "value": "gene01"
     },
     "dnsLabel2Prefix": {
-      "value": "gene"
+      "value": "gene02"
     },
-    "KeyVaultName": {
-        "value": null
+    "webdeploypkg01": {
+      "value": "https://github.com/glaisne/AZ-300_ARMTemplates/raw/master/ApplicationGateway/WebPage01.zip"
     },
-    "CertificateUrl": {
-        "value": null
+    "webdeploypkg02": {
+      "value": "https://github.com/glaisne/AZ-300_ARMTemplates/raw/master/ApplicationGateway/WebPage02.zip"
     },
-    "NSGSourceIP": {
-      "value": null
-    },
-    "webdeploypkg": {
-      "value": "https://github.com/glaisne/azure-quickstart-templates/raw/master/201-web-app-vm-dsc/WebApplication3.zip"
-    },
+    "modulesURL": {
+      "value": "https://github.com/glaisne/AZ-300_ARMTemplates/raw/master/ApplicationGateway/ConfigureWebServer.ps1.zip"
+    }
   }
 }

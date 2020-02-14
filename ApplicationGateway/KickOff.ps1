@@ -19,38 +19,28 @@ param (
 # Variables
 #-----------------------------
 
-if (-not $name   ) { $name = 'AZ300-LoadBalancer' }
-if (-not $purpose) { $purpose = 'AZ300-LoadBalancer' }
+if (-not $name   ) { $name = 'AZ300-AppGateway' }
+if (-not $purpose) { $purpose = 'AZ300-AppGateway' }
 
-$SubscriptionName = 'Azure-InfraSandbox'
 $SubscriptionName = 'Visual Studio Enterprise'
 
 
 $TemplateFile = "$pwd\azuredeploy.json"
 $rgname = "$name$Attempt" # working on better OUs & Autoshutdown
 #$saname = "genesyssa$Attempt"     # Lowercase required
-$VM1Name = 'LBServer1' # Windows computer name cannot be more than 15 characters long, be entirely numeric, or contain the following characters: ` ~ ! @ # $ % ^ & * ( ) = + _ [ ] { } \ | ; : . ' " , < > / ?
-$VM2Name = 'LBServer2'
-$dnsLabel1Prefix = "$VM1Name$(get-random -min 1000 -max 9999)".toLower()
-$dnsLabel2Prefix = "$VM2Name$(get-random -min 1000 -max 9999)".toLower()
+$VM1Name = 'BackEnd01' # Windows computer name cannot be more than 15 characters long, be entirely numeric, or contain the following characters: ` ~ ! @ # $ % ^ & * ( ) = + _ [ ] { } \ | ; : . ' " , < > / ?
+$VM2Name = 'BackEnd02'
+$dnsLabelPrefix = "AppGateway-$(get-random -min 1000 -max 9999)".toLower()
 $location = 'East US'
-$KeyVaultName = [string]::format("{0}{1}-kv", "$($rgname.replace('.','-').replace('_','-'))-".substring(0, [system.Math]::Min((24 - 7), $rgname.length)), $(get-random -min 1000 -max 9999))  # Must match pattern '^[a-zA-Z0-9-]{3,24}$'
-$SecretName = "$($rgname.replace('.','').replace('_','-'))`-Secret"
-$certificateName = "Azure-$rgname-SSCert" # SSCert = 'Self-Signed Certificate'
 $adminUsername = 'Gene'
 $cred = $([System.Management.Automation.PSCredential]::new('gene', $(ConvertTo-SecureString -String 'Password!101' -AsPlainText -Force)))
 $WindowsOSVersion = '2019-Datacenter'
 
+$webdeploypkg01 = "https://github.com/glaisne/AZ-300_ARMTemplates/raw/master/ApplicationGateway/WebPage01.zip"
+$webdeploypkg02 = "https://github.com/glaisne/AZ-300_ARMTemplates/raw/master/ApplicationGateway/WebPage02.zip"
+$modulesURL     = "https://github.com/glaisne/AZ-300_ARMTemplates/raw/master/ApplicationGateway/ConfigureWebServer.ps1.zip"
 
-if ($keyVaultName -notmatch '^[a-zA-Z0-9-]{3,24}$' -or $keyVaultName[0] -notmatch '[a-z]')
-{
-    Throw "The keyVaultName does not match the pattern '^[a-zA-Z0-9-]{3,24}$' or does not start with a letter"
-}
 
-if ($SecretName -notmatch '^[0-9a-zA-Z-]+$')
-{
-    throw "The secretname '$SecretName' is not valid and does not match the pattern '^[0-9a-zA-Z-]+$'."
-}
 
 if ($VMName.length -gt 15)
 {
@@ -174,45 +164,6 @@ else
     New-AzureRmResourceGroup -Name $rgname -Location $Location -Verbose 
 }
 
-# Create a Key Vault
-$NewVault = New-AzureRmKeyVault -VaultName $KeyVaultName -ResourceGroupName $rgname -Location $location -EnabledForDeployment -EnabledForTemplateDeployment
-
-Write-Warning "[$(Get-Date -format G)] message"
-
-
-#
-#    Create Certificate
-#
-
-
-# Create a self-signed certificate to add to the Key Vault
-$certificatefilePath = "$env:temp\$certificateName_$(get-date -f 'MMddyyyyHHmmss')$Attempt.pfx"
-$thumbprint = (New-SelfSignedCertificate -DnsName $certificateName -CertStoreLocation Cert:\CurrentUser\My -KeySpec KeyExchange).Thumbprint
-$cert = (Get-ChildItem -Path cert:\CurrentUser\My\$thumbprint)
-$password = $cred.Password
-
-# $password = Read-Host -Prompt "Please enter the certificate password." -AsSecureString
-Export-PfxCertificate -Cert $cert -FilePath $certificatefilePath -Password $password -Force
-
-# Upload the self-signed certificate to the Key Vault
-$fileContentBytes = Get-Content $certificatefilePath -Encoding Byte
-$fileContentEncoded = [System.Convert]::ToBase64String($fileContentBytes)
-
-$jsonObject = @"
-{
-  "data": "$filecontentencoded",
-  "dataType" :"pfx",
-  "password": "$($cred.GetNetworkCredential().Password)"
-}
-"@
-
-$jsonObjectBytes = [System.Text.Encoding]::UTF8.GetBytes($jsonObject)
-$jsonEncoded = [System.Convert]::ToBase64String($jsonObjectBytes)
-
-# Add the secret to the KeyVault
-$secret = ConvertTo-SecureString -String $jsonEncoded -AsPlainText -Force
-$newSecret = Set-AzureKeyVaultSecret -VaultName $KeyVaultName -Name $SecretName -SecretValue $secret
-
 
 
 #
@@ -229,12 +180,12 @@ $MyParams = @{
     location        = $location
     VM1Name         = $VM1Name
     VM2Name         = $VM2Name
-    CertificateUrl  = $newSecret.id
-    KeyVaultName    = $KeyVaultName
     NSGSourceIP     = $LocalIP
     adminUsername   = $adminUsername
-    dnsLabel1Prefix = $dnsLabel1Prefix
-    dnsLabel2Prefix = $dnsLabel2Prefix
+    dnsLabelPrefix  = $dnsLabelPrefix
+    webdeploypkg01  = $webdeploypkg01
+    webdeploypkg02  = $webdeploypkg02
+    modulesURL      = $modulesURL    
 }
 
 if ($WindowsOSVersion)
@@ -242,12 +193,7 @@ if ($WindowsOSVersion)
     $MyParams.Add('WindowsOSVersion', $WindowsOSVersion)
 }
 
-if ($MyParams['dnsLabel1Prefix'] -cnotmatch '^[a-z][a-z0-9-]{1,61}[a-z0-9]$')
-{
-    Throw 'dnsLabelPrefix does not match "^[a-z][a-z0-9-]{1,61}[a-z0-9]$"'
-}
-
-if ($MyParams['dnsLabel2Prefix'] -cnotmatch '^[a-z][a-z0-9-]{1,61}[a-z0-9]$')
+if ($MyParams['dnsLabelPrefix'] -cnotmatch '^[a-z][a-z0-9-]{1,61}[a-z0-9]$')
 {
     Throw 'dnsLabelPrefix does not match "^[a-z][a-z0-9-]{1,61}[a-z0-9]$"'
 }
