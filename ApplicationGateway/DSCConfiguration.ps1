@@ -38,26 +38,17 @@ Configuration DSCConfiguration
             DependsOn = "[WindowsFeature]WebServerRole"
         }
 
-        Script DeployWebPackage
+        Script DownloadDefaultDotHtm
         {
-            GetScript  = {
-                @{
-                    Result = ""
-                }
-            }
             TestScript = {
-                $false
+                Test-Path "C:\inetpub\wwwroot\default.htm"
             }
-            SetScript  = {
-
-                $WebClient = New-Object -TypeName System.Net.WebClient
-                $Destination = "C:\WindowsAzure\WebApplication.zip" 
-                $WebClient.DownloadFile($using:WebDeployPackagePath, $destination)
-                $Argument = '-source:package="C:\WindowsAzure\WebApplication.zip"' + ' -dest:auto,ComputerName="localhost"' + '" -verb:sync -allowUntrusted'
-                $MSDeployPath = (Get-ChildItem "HKLM:\SOFTWARE\Microsoft\IIS Extensions\MSDeploy" | Select -Last 1).GetValue("InstallPath")
-                Start-Process "$MSDeployPath\msdeploy.exe" $Argument -Verb runas
-        
+            SetScript ={
+                $dest = "C:\inetpub\wwwroot\default.htm"
+                Invoke-WebRequest $using:WebDeployPackagePath -OutFile $dest
             }
+            GetScript = {@{Result = "DownloadDefaultDotHtm"}}
+            DependsOn = "[WindowsFeature]WebServerRole"
         }
     }
 }

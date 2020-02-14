@@ -36,8 +36,8 @@ $adminUsername = 'Gene'
 $cred = $([System.Management.Automation.PSCredential]::new('gene', $(ConvertTo-SecureString -String 'Password!101' -AsPlainText -Force)))
 $WindowsOSVersion = '2019-Datacenter'
 
-$webdeploypkg01 = "https://github.com/glaisne/AZ-300_ARMTemplates/raw/master/ApplicationGateway/WebPage01.zip"
-$webdeploypkg02 = "https://github.com/glaisne/AZ-300_ARMTemplates/raw/master/ApplicationGateway/WebPage02.zip"
+$webdeploypkg01 = "https://github.com/glaisne/AZ-300_ARMTemplates/raw/master/ApplicationGateway/WebPage01.html"
+$webdeploypkg02 = "https://github.com/glaisne/AZ-300_ARMTemplates/raw/master/ApplicationGateway/WebPage02.html"
 $modulesURL     = "https://github.com/glaisne/AZ-300_ARMTemplates/raw/master/ApplicationGateway/DSCConfiguration.ps1.zip"
 
 
