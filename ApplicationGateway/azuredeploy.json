@@ -307,7 +307,7 @@
       },
       "resources": [
         {
-          "name": "DSCExt",
+          "name": "DSCExt1",
           "type": "extensions",
           "location": "[resourceGroup().location]",
           "apiVersion": "2019-03-01",
@@ -315,7 +315,7 @@
             "[concat('Microsoft.Compute/virtualMachines/', parameters('vm1Name'))]"
           ],
           "tags": {
-            "displayName": "DSCExt"
+            "displayName": "DSCExt1"
           },
           "properties": {
             "publisher": "Microsoft.Powershell",
@@ -323,8 +323,8 @@
             "typeHandlerVersion": "2.19",
             "autoUpgradeMinorVersion": true,
             "settings": {
-              "modulesUrl": "[parameters('modulesUrl')]",
-              "configurationFunction": "ConfigureWebServer.ps1\\Main",
+              "ModulesUrl": "[parameters('modulesUrl')]",
+              "configurationfunction": "DSCConfiguration.ps1\\DSCConfiguration",
               "properties": {
                 "MachineName": "[parameters('vm1Name')]",
                 "WebDeployPackagePath": "[parameters('webdeploypkg01')]"
@@ -382,7 +382,7 @@
       },
       "resources": [
         {
-          "name": "DSCExt",
+          "name": "DSCExt2",
           "type": "extensions",
           "location": "[resourceGroup().location]",
           "apiVersion": "2019-03-01",
@@ -390,7 +390,7 @@
             "[concat('Microsoft.Compute/virtualMachines/', parameters('vm2Name'))]"
           ],
           "tags": {
-            "displayName": "DSCExt"
+            "displayName": "DSCExt2"
           },
           "properties": {
             "publisher": "Microsoft.Powershell",
@@ -398,11 +398,11 @@
             "typeHandlerVersion": "2.19",
             "autoUpgradeMinorVersion": true,
             "settings": {
-              "modulesUrl": "[parameters('modulesUrl')]",
-              "configurationFunction": "ConfigureWebServer.ps1\\Main",
+              "ModulesUrl": "[parameters('modulesUrl')]",
+              "configurationfunction": "DSCConfiguration.ps1\\DSCConfiguration",
               "properties": {
-                "MachineName": "[parameters('vm2Name')]",
-                "WebDeployPackagePath": "[parameters('webdeploypkg02')]"
+                "MachineName": "[parameters('vm1Name')]",
+                "WebDeployPackagePath": "[parameters('webdeploypkg01')]"
               }
             },
             "protectedSettings": {}

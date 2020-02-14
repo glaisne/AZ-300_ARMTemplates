@@ -38,7 +38,7 @@ $WindowsOSVersion = '2019-Datacenter'
 
 $webdeploypkg01 = "https://github.com/glaisne/AZ-300_ARMTemplates/raw/master/ApplicationGateway/WebPage01.zip"
 $webdeploypkg02 = "https://github.com/glaisne/AZ-300_ARMTemplates/raw/master/ApplicationGateway/WebPage02.zip"
-$modulesURL     = "https://github.com/glaisne/AZ-300_ARMTemplates/raw/master/ApplicationGateway/ConfigureWebServer.ps1.zip"
+$modulesURL     = "https://github.com/glaisne/AZ-300_ARMTemplates/raw/master/ApplicationGateway/DSCConfiguration.ps1.zip"
 
 
 

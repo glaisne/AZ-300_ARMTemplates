@@ -33,7 +33,7 @@
       "value": "https://github.com/glaisne/AZ-300_ARMTemplates/raw/master/ApplicationGateway/WebPage02.zip"
     },
     "modulesURL": {
-      "value": "https://github.com/glaisne/AZ-300_ARMTemplates/raw/master/ApplicationGateway/ConfigureWebServer.ps1.zip"
+      "value": "https://github.com/glaisne/AZ-300_ARMTemplates/raw/master/ApplicationGateway/DSCConfiguration.ps1.zip"
     }
   }
 }
