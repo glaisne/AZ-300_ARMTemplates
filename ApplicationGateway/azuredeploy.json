@@ -401,8 +401,8 @@
               "ModulesUrl": "[parameters('modulesUrl')]",
               "configurationfunction": "DSCConfiguration.ps1\\DSCConfiguration",
               "properties": {
-                "MachineName": "[parameters('vm1Name')]",
-                "WebDeployPackagePath": "[parameters('webdeploypkg01')]"
+                "MachineName": "[parameters('vm2Name')]",
+                "WebDeployPackagePath": "[parameters('webdeploypkg02')]"
               }
             },
             "protectedSettings": {}
