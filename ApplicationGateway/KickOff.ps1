@@ -51,61 +51,6 @@ if ($VMName.length -gt 15)
 # Functions
 #-----------------------------
 
-function GetPSSession
-{
-    param (
-        [parameter(mandatory)]
-        [string] $IPAddress,
-
-        # Specify credentials for this CmdLet
-        [ValidateNotNull()]
-        [System.Management.Automation.PSCredential]
-        [System.Management.Automation.Credential()]
-        $Credential = [System.Management.Automation.PSCredential]::Empty
-    )
-    $trycount = 0
-    $Connected = $false
-    While ($Trycount -lt 20 -and $connected -eq $False)
-    {
-        # Destroy the old!
-        get-pssession -ea 0 |? {$_.ComputerName -eq $IPAddress} | Remove-PSSession -ea 0
-
-        if ($TryCount -gt 0)
-        {
-            Get-pssession |ft -auto
-        }
-
-        if ($TryCount -gt 5)
-        {
-            Write-Verbose "[$(Get-Date -format G)] $($TryCount.ToString('0000')) Removing all PSSessions"
-            get-pssession -ea 0 | Remove-PSSession -ea 0
-        }
-
-
-        Write-Verbose "[$(Get-Date -format G)] $($TryCount.ToString('0000')) Attempting to get PS Session to $IP"
-    
-        # This was moved from teh script to a function. Bad code... no biscuit!
-        # if (-not (get-variable sessionCred -Scope Global -EA 'SilentlyContinue'))
-        # {
-        #     $Global:sessionCred = get-Credential ~\gene
-        # }
-    
-        try
-        {
-            $Session = new-pssession -ConnectionUri "https://$IPAddress`:5986" -credential $Credential -SessionOption (New-PSSessionOption -SkipCACheck -SkipCNCheck -SkipRevocationCheck) -Authentication Negotiate -ErrorAction Stop
-            $Connected = $True
-        }
-        catch
-        {
-            $err = $_
-            Write-warning "Failed to get sesion: $($Err.Exception.Message)"
-            Start-sleep -s 20
-        }
-        $trycount++
-    }
-
-    $Session
-}
 
 function GetMyIp()
 {
